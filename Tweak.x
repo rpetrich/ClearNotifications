@@ -80,10 +80,12 @@ static BBBulletinRequest *bulletin;
 {
 	if (bulletin && [context.bulletinID isEqualToString:bulletin.bulletinID]) {
 		for (SBAwayBulletinListItem *listItem in CHIvar(self, _listItems, NSMutableArray *)) {
-			BBBulletin *b = [listItem activeBulletin];
-			if (b != bulletin) {
-				context = [%c(SBAwayListUnlockActionContext) unlockActionContextForBulletin:b];
-				break;
+			if ([listItem respondsToSelector:@selector(activeBulletin)]) {
+				BBBulletin *b = [listItem activeBulletin];
+				if (b != bulletin) {
+					context = [%c(SBAwayListUnlockActionContext) unlockActionContextForBulletin:b];
+					break;
+				}
 			}
 		}
 	}
@@ -120,6 +122,8 @@ static BBBulletinRequest *bulletin;
 
 %hook SBAwayBulletinCell
 
+static NSInteger slideBackStatus;
+
 // Force clear all notifications
 - (void)lockBarUnlocked:(id)lockBar
 {
@@ -141,6 +145,51 @@ static BBBulletinRequest *bulletin;
 	} else {
 		%orig;
 	}
+}
+
+- (void)lockBarStartedTracking:(id)lockBar
+{
+	slideBackStatus = 0;
+	%orig;
+}
+
+- (void)lockBarSlidBackToOrigin:(id)lockBar
+{
+	if (slideBackStatus == 2) {
+		NSString *bulletinID = self.actionContext.bulletinID;
+		SBAwayBulletinListController *controller = [[[%c(SBAwayController) sharedAwayController] awayView] bulletinController];
+		if (controller) {
+			for (SBAwayBulletinListItem *listItem in CHIvar(controller, _listItems, NSMutableArray *)) {
+				for (BBBulletin *b in [listItem bulletins]) {
+					if ([b.bulletinID isEqualToString:bulletinID] && (b != bulletin)) {
+						[controller observer:CHIvar(controller, _observer, BBObserver *) removeBulletin:b];
+						%orig;
+						return;
+					}
+				}
+			}
+		}
+	}
+	%orig;
+}
+
+%end
+
+%hook SBBulletinLockBar
+
+- (void)knobDragged:(CGFloat)dragged
+{
+	switch (slideBackStatus) {
+		case 0:
+			if (dragged == 1.0f)
+				slideBackStatus = 1;
+			break;
+		case 1:
+			if (dragged == 0.0f)
+				slideBackStatus = 2;
+			break;
+	}
+	%orig;
 }
 
 %end
