@@ -3,7 +3,7 @@ Priority: optional
 Section: System
 Architecture: iphoneos-arm
 Version: 0.1
-Description: Swipe to clear all notifications from lock screen
+Description: Swipe to clear all notifications from lock screen. Idea by Josh Tucker
 Name: Clear Notifications
 Depends: firmware (>= 5.0), mobilesubstrate
 Author: Ryan Petrich <rpetrich+clearnotifications@gmail.com>
